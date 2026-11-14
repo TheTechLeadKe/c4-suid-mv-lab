@@ -1,0 +1,26 @@
+
+[build]
+before    = [ ["/usr/bin/echo", "linux build beginning"], ["/usr/bin/rm", "-f", "main-linux"] ]
+name      = "linux"
+compiler  = "/home/gr8mansa/Public/c4_backup_v8/app"
+profile   = "c4"
+target    = "x86_64-linux-gnuc"
+input     = "src/main.c4"
+output    = "main-linux"
+link      = ["m", "atomic"]
+after     = [ ["/usr/bin/echo", "linux build finished"] ]
+#[build]
+
+[build]
+before    = [ ["/usr/bin/echo", "windows build beginning"], ["/usr/bin/rm", "-f", "main-windows.exe"] ]
+name      = "windows"
+compiler  = "/home/gr8mansa/Public/c4_backup_v8/app"
+profile   = "c4"
+target    = "x86_64-windows-mingw"
+input     = "src/main.c4"
+output    = "main-windows"
+link      = ["m", "ws2_32"]
+after     = [ ["/usr/bin/echo", "windows build finished"] ]
+#[build]
+
+

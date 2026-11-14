@@ -1,0 +1,6 @@
+
+# Make GitHub (Linguist) highlight c4 sources as Rust
+*.c4 linguist-language=Rust
+
+# Count them toward the repo's language stats
+*.c4 linguist-detectable=true

