@@ -36,7 +36,7 @@ sudo cp /etc/passwd /etc/passwd.bak
 **1. Setup (once, as root)** — enable the plant step, build, then:
 
 ```sh
-sudo ./suid_lab          # creates a root-owned SUID ./mv
+sudo ./suid_lab plant         # creates a root-owned SUID ./mv
 ```
 
 **2. Exploit (as a normal user)** — disable the plant step, rebuild, then:
